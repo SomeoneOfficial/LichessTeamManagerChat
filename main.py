@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 import requests
@@ -61,8 +62,8 @@ def list_team_members(_: dict) -> None:
 
 def list_tournaments(_: dict) -> None:
     response = requests.get(
-        f"{LICHESS_API}/team/{TEAM_ID}/arena",
-        headers=get_headers(),
+        f"{LICHESS_API}/team/{TEAM_ID}/swiss",
+        headers=get_headers(accept="application/x-ndjson"),
         timeout=30,
     )
     response.raise_for_status()
@@ -90,6 +91,68 @@ def send_message(command_data: dict) -> None:
     print(f"Message sent to {username}.")
 
 
+def create_swiss_tournaments(command_data: dict) -> None:
+    team_id = str(command_data.get("team_id", TEAM_ID)).strip()
+    tournaments = command_data.get("tournaments")
+
+    if not isinstance(tournaments, list) or not tournaments:
+        raise ValueError("create-swiss-tournaments requires a non-empty tournaments list.")
+    if len(tournaments) > 10:
+        raise ValueError("A maximum of 10 tournaments can be created in one run.")
+
+    created = []
+
+    for index, tournament in enumerate(tournaments, start=1):
+        if not isinstance(tournament, dict):
+            raise ValueError(f"Tournament #{index} must be a JSON object.")
+
+        name = str(tournament.get("name", "")).strip()
+        clock_limit = int(tournament.get("clock_limit", 180))
+        clock_increment = int(tournament.get("clock_increment", 0))
+        rounds = int(tournament.get("rounds", 5))
+        variant = str(tournament.get("variant", "standard")).strip()
+        description = str(tournament.get("description", "")).strip()
+        rated = bool(tournament.get("rated", False))
+
+        if not name:
+            raise ValueError(f"Tournament #{index} is missing a name.")
+        if not 3 <= rounds <= 100:
+            raise ValueError(f"Tournament #{index} has invalid rounds: {rounds}.")
+        if clock_limit < 0 or clock_increment < 0:
+            raise ValueError(f"Tournament #{index} has an invalid clock setting.")
+
+        payload = {
+            "name": name,
+            "clock.limit": clock_limit,
+            "clock.increment": clock_increment,
+            "nbRounds": rounds,
+            "variant": variant,
+            "rated": "true" if rated else "false",
+            "description": description,
+        }
+
+        response = requests.post(
+            f"{LICHESS_API}/swiss/new/{team_id}",
+            headers=get_headers(),
+            data=payload,
+            timeout=30,
+        )
+
+        if response.status_code == 429:
+            raise RuntimeError("Lichess rate limit reached. Wait at least one minute before retrying.")
+
+        response.raise_for_status()
+        result = response.json()
+        tournament_id = result.get("id", "unknown")
+        created.append(tournament_id)
+        print(f"Created {name}: https://lichess.org/swiss/{tournament_id}")
+
+        if index < len(tournaments):
+            time.sleep(2)
+
+    print(f"Created {len(created)} Swiss tournaments.")
+
+
 def main() -> None:
     command_data = read_command()
     command_name = str(command_data.get("command", "status")).strip().lower()
@@ -99,6 +162,7 @@ def main() -> None:
         "list-team-members": list_team_members,
         "list-tournaments": list_tournaments,
         "send-message": send_message,
+        "create-swiss-tournaments": create_swiss_tournaments,
     }
 
     action = commands.get(command_name)
@@ -116,7 +180,7 @@ if __name__ == "__main__":
     except requests.HTTPError as error:
         response = error.response
         print(
-            f"Lichess API error {response.status_code}: {response.text[:500]}",
+            f"Lichess API error {response.status_code}: {response.text[:1000]}",
             file=sys.stderr,
         )
         raise SystemExit(1)
