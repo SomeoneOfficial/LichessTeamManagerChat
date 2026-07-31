@@ -1,52 +1,20 @@
 {
-  "command": "create-swiss-tournaments",
-  "team_id": "the-chess-fan-club",
-  "request_id": "2026-07-31-swiss-cheesse-001",
-  "tournaments": [
-    {
-      "name": "Swiss Cheesse UltraBullet",
-      "clock_limit": 15,
-      "clock_increment": 0,
-      "rounds": 12,
-      "variant": "standard",
-      "rated": false,
-      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize events, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland. Alliance: https://lichess.org/team/the-ultrabullet-abominations"
-    },
-    {
-      "name": "Swiss Cheesse Bullet",
-      "clock_limit": 60,
-      "clock_increment": 0,
-      "rounds": 10,
-      "variant": "standard",
-      "rated": false,
-      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize events, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland. Alliance: https://lichess.org/team/the-ultrabullet-abominations"
-    },
-    {
-      "name": "Swiss Cheesse Blitz Crazyhouse",
-      "clock_limit": 180,
-      "clock_increment": 0,
-      "rounds": 8,
-      "variant": "crazyhouse",
-      "rated": false,
-      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize events, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland. Alliance: https://lichess.org/team/the-ultrabullet-abominations"
-    },
-    {
-      "name": "Swiss Cheesse Atomic Blitz",
-      "clock_limit": 180,
-      "clock_increment": 2,
-      "rounds": 7,
-      "variant": "atomic",
-      "rated": false,
-      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize events, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland. Alliance: https://lichess.org/team/the-ultrabullet-abominations"
-    },
-    {
-      "name": "Swiss Cheesse Rapid Chess960",
-      "clock_limit": 600,
-      "clock_increment": 0,
-      "rounds": 5,
-      "variant": "chess960",
-      "rated": false,
-      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize events, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland. Alliance: https://lichess.org/team/the-ultrabullet-abominations"
-    }
+  "command": "discover-small-active-teams",
+  "max_members": 149,
+  "target_count": 100,
+  "active_days": 365,
+  "pages_per_query": 20,
+  "output_file": "small_active_teams.json",
+  "search_terms": [
+    "chess",
+    "club",
+    "team",
+    "academy",
+    "community",
+    "friends",
+    "school",
+    "rapid",
+    "blitz",
+    "bullet"
   ]
 }
