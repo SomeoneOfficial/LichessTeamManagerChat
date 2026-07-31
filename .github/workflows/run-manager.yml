@@ -1,28 +1,24 @@
-name: Run Lichess Team Manager
+name: Create 10 Lichess Swiss Tournaments
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - "command.json"
-      - "main.py"
-      - "requirements.txt"
-      - ".github/workflows/run-manager.yml"
-
-  workflow_dispatch:
+      - "run.trigger"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: lichess-team-manager
+  group: lichess-swiss-creator
   cancel-in-progress: false
 
 jobs:
-  run-manager:
+  create-tournaments:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     env:
       LICHESS_TOKEN: ${{ secrets.LICHESS_TOKEN }}
@@ -30,8 +26,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,7 +38,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Check required secret
+      - name: Verify Lichess token
         shell: bash
         run: |
           if [ -z "$LICHESS_TOKEN" ]; then
@@ -52,28 +46,5 @@ jobs:
             exit 1
           fi
 
-      - name: Validate command
-        run: python -m json.tool command.json
-
-      - name: Run manager
+      - name: Create the tournaments
         run: python main.py
-
-      - name: Validate generated teams JSON
-        if: ${{ hashFiles('small_active_teams.json') != '' }}
-        run: python -m json.tool small_active_teams.json > /dev/null
-
-      - name: Commit generated JSON
-        if: ${{ hashFiles('small_active_teams.json') != '' }}
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add small_active_teams.json
-
-          if git diff --cached --quiet; then
-            echo "Generated JSON is unchanged."
-            exit 0
-          fi
-
-          git commit -m "Update discovered Lichess teams [skip ci]"
-          git push origin HEAD:main
