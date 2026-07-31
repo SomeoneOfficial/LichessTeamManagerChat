@@ -6,7 +6,8 @@ from pathlib import Path
 import requests
 
 
-LICHESS_API = "https://lichess.org/api"
+LICHESS_ROOT = "https://lichess.org"
+LICHESS_API = f"{LICHESS_ROOT}/api"
 TEAM_ID = "the-chess-fan-club"
 COMMAND_FILE = Path("command.json")
 
@@ -80,7 +81,7 @@ def send_message(command_data: dict) -> None:
         raise ValueError("Message is too long.")
 
     response = requests.post(
-        f"{LICHESS_API}/inbox/{username}",
+        f"{LICHESS_ROOT}/inbox/{username}",
         headers=get_headers(accept="application/json"),
         data={"text": message},
         timeout=30,
