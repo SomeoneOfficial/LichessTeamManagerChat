@@ -1,20 +1,99 @@
 {
-  "command": "discover-small-active-teams",
-  "max_members": 149,
-  "target_count": 100,
-  "active_days": 365,
-  "pages_per_query": 20,
-  "output_file": "small_active_teams.json",
-  "search_terms": [
-    "chess",
-    "club",
-    "team",
-    "academy",
-    "community",
-    "friends",
-    "school",
-    "rapid",
-    "blitz",
-    "bullet"
+  "command": "create-swiss-tournaments",
+  "team_id": "the-chess-fan-club",
+  "start_delay_minutes": 30,
+  "spacing_minutes": 45,
+  "request_id": "2026-07-31-swiss-cheesse-10-v1",
+  "tournaments": [
+    {
+      "name": "Swiss Cheesse UltraBullet",
+      "clock_limit": 15,
+      "clock_increment": 0,
+      "rounds": 12,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse HyperBullet",
+      "clock_limit": 30,
+      "clock_increment": 0,
+      "rounds": 11,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Bullet",
+      "clock_limit": 60,
+      "clock_increment": 0,
+      "rounds": 10,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Bullet Plus",
+      "clock_limit": 60,
+      "clock_increment": 1,
+      "rounds": 9,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Blitz",
+      "clock_limit": 180,
+      "clock_increment": 0,
+      "rounds": 8,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Blitz Increment",
+      "clock_limit": 180,
+      "clock_increment": 2,
+      "rounds": 8,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Crazyhouse",
+      "clock_limit": 180,
+      "clock_increment": 0,
+      "rounds": 7,
+      "variant": "crazyhouse",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Atomic",
+      "clock_limit": 180,
+      "clock_increment": 2,
+      "rounds": 7,
+      "variant": "atomic",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Chess960",
+      "clock_limit": 300,
+      "clock_increment": 3,
+      "rounds": 6,
+      "variant": "chess960",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    },
+    {
+      "name": "Swiss Cheesse Rapid",
+      "clock_limit": 600,
+      "clock_increment": 0,
+      "rounds": 5,
+      "variant": "standard",
+      "rated": false,
+      "description": "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\nJoin The Chess Fan Club for prize tournaments, ChessMood subscriptions, trophies, flairs, titles, leaderboards and Hall of Fame rewards. Want to organize or add your team to future battles? DM @Ajisland."
+    }
   ]
 }
