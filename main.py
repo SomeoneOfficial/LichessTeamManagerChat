@@ -1,43 +1,114 @@
-import json
 import os
 import sys
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import requests
 
 
 LICHESS_API = "https://lichess.org/api"
-DEFAULT_TEAM_ID = "the-chess-fan-club"
-COMMAND_FILE = Path("command.json")
+TEAM_ID = "the-chess-fan-club"
+START_DELAY_MINUTES = 30
+SPACING_MINUTES = 45
+
+DESCRIPTION = (
+    "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\n"
+    "Join The Chess Fan Club for prize tournaments, ChessMood subscriptions, "
+    "trophies, flairs, titles, leaderboards and Hall of Fame rewards. "
+    "Want to organize or add your team to future battles? DM @Ajisland."
+)
+
+TOURNAMENTS = [
+    {
+        "name": "Swiss Cheesse UltraBullet",
+        "clock_limit": 15,
+        "clock_increment": 0,
+        "rounds": 12,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse HyperBullet",
+        "clock_limit": 30,
+        "clock_increment": 0,
+        "rounds": 11,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse Bullet",
+        "clock_limit": 60,
+        "clock_increment": 0,
+        "rounds": 10,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse Bullet Plus",
+        "clock_limit": 60,
+        "clock_increment": 1,
+        "rounds": 9,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse Blitz",
+        "clock_limit": 180,
+        "clock_increment": 0,
+        "rounds": 8,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse Blitz Increment",
+        "clock_limit": 180,
+        "clock_increment": 2,
+        "rounds": 8,
+        "variant": "standard",
+    },
+    {
+        "name": "Swiss Cheesse Crazyhouse",
+        "clock_limit": 180,
+        "clock_increment": 0,
+        "rounds": 7,
+        "variant": "crazyhouse",
+    },
+    {
+        "name": "Swiss Cheesse Atomic",
+        "clock_limit": 180,
+        "clock_increment": 2,
+        "rounds": 7,
+        "variant": "atomic",
+    },
+    {
+        "name": "Swiss Cheesse Chess960",
+        "clock_limit": 300,
+        "clock_increment": 3,
+        "rounds": 6,
+        "variant": "chess960",
+    },
+    {
+        "name": "Swiss Cheesse Rapid",
+        "clock_limit": 600,
+        "clock_increment": 0,
+        "rounds": 5,
+        "variant": "standard",
+    },
+]
 
 
-def token() -> str:
-    value = os.getenv("LICHESS_TOKEN", "").strip()
-    if not value:
+def get_token() -> str:
+    token = os.getenv("LICHESS_TOKEN", "").strip()
+    if not token:
         raise RuntimeError("LICHESS_TOKEN is missing from GitHub Actions secrets.")
-    return value
+    return token
 
 
-def headers() -> dict[str, str]:
+def get_headers() -> dict[str, str]:
     return {
-        "Authorization": f"Bearer {token()}",
+        "Authorization": f"Bearer {get_token()}",
         "Accept": "application/json",
-        "User-Agent": "LichessTeamManagerChat/2.0",
+        "User-Agent": "LichessTeamManagerChat/3.0",
     }
 
 
-def read_command() -> dict:
-    with COMMAND_FILE.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-    if not isinstance(data, dict):
-        raise ValueError("command.json must contain a JSON object.")
-    return data
-
-
-def rounded_start(delay_minutes: int) -> datetime:
-    start = datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)
+def rounded_start() -> datetime:
+    start = datetime.now(timezone.utc) + timedelta(minutes=START_DELAY_MINUTES)
     start = start.replace(second=0, microsecond=0)
     remainder = start.minute % 5
     if remainder:
@@ -45,79 +116,66 @@ def rounded_start(delay_minutes: int) -> datetime:
     return start
 
 
-def create_tournaments(command: dict) -> None:
-    tournaments = command.get("tournaments")
-    if not isinstance(tournaments, list) or len(tournaments) != 10:
-        raise ValueError("command.json must contain exactly 10 tournaments.")
+def create_tournament(tournament: dict, start_time: datetime) -> str:
+    payload = {
+        "name": tournament["name"],
+        "clock.limit": tournament["clock_limit"],
+        "clock.increment": tournament["clock_increment"],
+        "nbRounds": tournament["rounds"],
+        "variant": tournament["variant"],
+        "rated": "false",
+        "description": DESCRIPTION,
+        "startsAt": start_time.isoformat().replace("+00:00", "Z"),
+    }
 
-    team_id = str(command.get("team_id", DEFAULT_TEAM_ID)).strip()
-    first_start = rounded_start(int(command.get("start_delay_minutes", 30)))
-    spacing = int(command.get("spacing_minutes", 45))
+    response = requests.post(
+        f"{LICHESS_API}/swiss/new/{TEAM_ID}",
+        headers=get_headers(),
+        data=payload,
+        timeout=30,
+    )
 
-    if spacing < 15:
-        raise ValueError("spacing_minutes must be at least 15.")
+    if response.status_code == 429:
+        raise RuntimeError("Lichess rate limit reached. Wait one minute before retrying.")
 
-    created: list[str] = []
-
-    for index, tournament in enumerate(tournaments):
-        if not isinstance(tournament, dict):
-            raise ValueError(f"Tournament #{index + 1} must be an object.")
-
-        start_time = first_start + timedelta(minutes=index * spacing)
-        name = str(tournament["name"]).strip()
-
-        payload = {
-            "name": name,
-            "clock.limit": int(tournament["clock_limit"]),
-            "clock.increment": int(tournament.get("clock_increment", 0)),
-            "nbRounds": int(tournament.get("rounds", 7)),
-            "variant": str(tournament.get("variant", "standard")),
-            "rated": "true" if bool(tournament.get("rated", False)) else "false",
-            "description": str(tournament.get("description", "")),
-            "startsAt": start_time.isoformat().replace("+00:00", "Z"),
-        }
-
-        response = requests.post(
-            f"{LICHESS_API}/swiss/new/{team_id}",
-            headers=headers(),
-            data=payload,
-            timeout=30,
+    if not response.ok:
+        raise RuntimeError(
+            f"Failed to create {tournament['name']}: "
+            f"HTTP {response.status_code}: {response.text[:1000]}"
         )
 
-        if response.status_code == 429:
-            raise RuntimeError("Lichess rate limit reached. Retry later.")
+    result = response.json()
+    tournament_id = result.get("id")
+    if not tournament_id:
+        raise RuntimeError(
+            f"Lichess returned no tournament ID for {tournament['name']}: {result}"
+        )
 
-        if not response.ok:
-            raise RuntimeError(
-                f"Failed to create {name}: HTTP {response.status_code}: "
-                f"{response.text[:1000]}"
-            )
-
-        result = response.json()
-        tournament_id = result.get("id")
-        if not tournament_id:
-            raise RuntimeError(f"Lichess returned no tournament ID for {name}: {result}")
-
-        url = f"https://lichess.org/swiss/{tournament_id}"
-        created.append(url)
-        print(f"Created {name} at {start_time.isoformat()}: {url}")
-
-        if index < len(tournaments) - 1:
-            time.sleep(3)
-
-    print("\nCreated all tournaments:")
-    for url in created:
-        print(url)
+    return f"https://lichess.org/swiss/{tournament_id}"
 
 
 def main() -> None:
-    command = read_command()
-    command_name = str(command.get("command", "")).strip().lower()
+    if len(TOURNAMENTS) != 10:
+        raise RuntimeError("The script must contain exactly 10 tournaments.")
 
-    if command_name != "create-swiss-tournaments":
-        raise ValueError("command must be create-swiss-tournaments.")
+    first_start = rounded_start()
+    created: list[str] = []
 
-    create_tournaments(command)
+    for index, tournament in enumerate(TOURNAMENTS):
+        start_time = first_start + timedelta(minutes=index * SPACING_MINUTES)
+        url = create_tournament(tournament, start_time)
+        created.append(url)
+        print(
+            f"Created {tournament['name']} for {start_time.isoformat()}: {url}",
+            flush=True,
+        )
+
+        if index < len(TOURNAMENTS) - 1:
+            time.sleep(3)
+
+    print("\nCreated all 10 Swiss tournaments:")
+    for url in created:
+        print(url)
 
 
 if __name__ == "__main__":
