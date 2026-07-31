@@ -1,11 +1,14 @@
+import json
 import os
 import sys
+from pathlib import Path
 
 import requests
 
 
 LICHESS_API = "https://lichess.org/api"
 TEAM_ID = "the-chess-fan-club"
+COMMAND_FILE = Path("command.json")
 
 
 def get_token() -> str:
@@ -23,31 +26,39 @@ def get_headers(*, accept: str = "application/json") -> dict[str, str]:
     }
 
 
-def check_account() -> None:
+def read_command() -> dict:
+    if not COMMAND_FILE.exists():
+        return {"command": "status"}
+    with COMMAND_FILE.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    if not isinstance(data, dict):
+        raise ValueError("command.json must contain a JSON object.")
+    return data
+
+
+def check_account(_: dict) -> None:
     response = requests.get(
         f"{LICHESS_API}/account",
         headers=get_headers(),
         timeout=30,
     )
     response.raise_for_status()
-
     account = response.json()
     print(f"Authenticated successfully as: {account.get('username', 'Unknown')}")
 
 
-def list_team_members() -> None:
+def list_team_members(_: dict) -> None:
     response = requests.get(
         f"{LICHESS_API}/team/{TEAM_ID}/users",
         headers=get_headers(accept="application/x-ndjson"),
         timeout=60,
     )
     response.raise_for_status()
-
     members = [line for line in response.text.splitlines() if line.strip()]
     print(f"Team member records received: {len(members)}")
 
 
-def list_tournaments() -> None:
+def list_tournaments(_: dict) -> None:
     response = requests.get(
         f"{LICHESS_API}/team/{TEAM_ID}/arena",
         headers=get_headers(),
@@ -57,22 +68,45 @@ def list_tournaments() -> None:
     print(response.text)
 
 
+def send_message(command_data: dict) -> None:
+    username = str(command_data.get("username", "")).strip()
+    message = str(command_data.get("message", "")).strip()
+
+    if not username:
+        raise ValueError("send-message requires a username.")
+    if not message:
+        raise ValueError("send-message requires a message.")
+    if len(message) > 8000:
+        raise ValueError("Message is too long.")
+
+    response = requests.post(
+        f"{LICHESS_API}/inbox/{username}",
+        headers=get_headers(accept="application/json"),
+        data={"text": message},
+        timeout=30,
+    )
+    response.raise_for_status()
+    print(f"Message sent to {username}.")
+
+
 def main() -> None:
-    command = os.getenv("MANAGER_COMMAND", "status").strip().lower()
+    command_data = read_command()
+    command_name = str(command_data.get("command", "status")).strip().lower()
 
     commands = {
         "status": check_account,
         "list-team-members": list_team_members,
         "list-tournaments": list_tournaments,
+        "send-message": send_message,
     }
 
-    action = commands.get(command)
+    action = commands.get(command_name)
     if action is None:
-        print(f"Unknown command: {command}", file=sys.stderr)
+        print(f"Unknown command: {command_name}", file=sys.stderr)
         print(f"Allowed commands: {', '.join(commands)}", file=sys.stderr)
         raise SystemExit(2)
 
-    action()
+    action(command_data)
 
 
 if __name__ == "__main__":
