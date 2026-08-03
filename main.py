@@ -16,20 +16,19 @@ DESCRIPTION = (
     "Want to organize or add your team to future battles? DM @Ajisland."
 )
 
+# The first three Arenas from the previous run were likely created successfully.
+# This retry creates only the two Arenas that failed, followed by all five Swisses.
+ARENAS = [
+    {"name": "Cheesse Arena Crazyhouse", "clock_time": 3, "clock_increment": 0, "minutes": 45, "wait_minutes": 45, "variant": "crazyhouse"},
+    {"name": "Cheesse Arena Chess960", "clock_time": 5, "clock_increment": 3, "minutes": 60, "wait_minutes": 60, "variant": "chess960"},
+]
+
 SWISSES = [
     {"name": "Swiss Cheesse Bullet Reloaded", "clock_limit": 60, "clock_increment": 0, "rounds": 10, "variant": "standard"},
     {"name": "Swiss Cheesse Blitz Reloaded", "clock_limit": 180, "clock_increment": 2, "rounds": 8, "variant": "standard"},
     {"name": "Swiss Cheesse Crazyhouse Reloaded", "clock_limit": 180, "clock_increment": 0, "rounds": 7, "variant": "crazyhouse"},
     {"name": "Swiss Cheesse Atomic Reloaded", "clock_limit": 180, "clock_increment": 2, "rounds": 7, "variant": "atomic"},
     {"name": "Swiss Cheesse Rapid Reloaded", "clock_limit": 600, "clock_increment": 0, "rounds": 5, "variant": "standard"},
-]
-
-ARENAS = [
-    {"name": "Cheesse Arena UltraBullet", "clock_time": 0.25, "clock_increment": 0, "minutes": 30, "wait_minutes": 10, "variant": "standard"},
-    {"name": "Cheesse Arena Bullet", "clock_time": 1, "clock_increment": 0, "minutes": 40, "wait_minutes": 20, "variant": "standard"},
-    {"name": "Cheesse Arena Blitz", "clock_time": 3, "clock_increment": 2, "minutes": 50, "wait_minutes": 30, "variant": "standard"},
-    {"name": "Cheesse Arena Crazyhouse", "clock_time": 3, "clock_increment": 0, "minutes": 45, "wait_minutes": 40, "variant": "crazyhouse"},
-    {"name": "Cheesse Arena Chess960", "clock_time": 5, "clock_increment": 3, "minutes": 60, "wait_minutes": 50, "variant": "chess960"},
 ]
 
 
@@ -44,7 +43,7 @@ def headers() -> dict[str, str]:
     return {
         "Authorization": f"Bearer {token()}",
         "Accept": "application/json",
-        "User-Agent": "LichessTeamManagerChat/4.0",
+        "User-Agent": "LichessTeamManagerChat/4.1",
     }
 
 
@@ -64,6 +63,33 @@ def rounded_utc_start(delay_minutes: int) -> datetime:
     if remainder:
         start += timedelta(minutes=5 - remainder)
     return start
+
+
+def create_arena(tournament: dict) -> str:
+    payload = {
+        "name": tournament["name"],
+        "clockTime": tournament["clock_time"],
+        "clockIncrement": tournament["clock_increment"],
+        "minutes": tournament["minutes"],
+        "waitMinutes": tournament["wait_minutes"],
+        "variant": tournament["variant"],
+        "rated": "false",
+        "berserkable": "true",
+        "description": DESCRIPTION,
+        "conditions.teamMember.teamId": TEAM_ID,
+    }
+
+    response = post_with_rate_limit(f"{LICHESS_API}/tournament", payload)
+    if not response.ok:
+        raise RuntimeError(
+            f"Failed to create Arena {tournament['name']}: "
+            f"HTTP {response.status_code}: {response.text[:1000]}"
+        )
+
+    tournament_id = response.json().get("id")
+    if not tournament_id:
+        raise RuntimeError(f"No Arena ID returned for {tournament['name']}.")
+    return f"https://lichess.org/tournament/{tournament_id}"
 
 
 def create_swiss(tournament: dict, start_time: datetime) -> str:
@@ -94,37 +120,10 @@ def create_swiss(tournament: dict, start_time: datetime) -> str:
     return f"https://lichess.org/swiss/{tournament_id}"
 
 
-def create_arena(tournament: dict) -> str:
-    payload = {
-        "name": tournament["name"],
-        "clockTime": tournament["clock_time"],
-        "clockIncrement": tournament["clock_increment"],
-        "minutes": tournament["minutes"],
-        "waitMinutes": tournament["wait_minutes"],
-        "variant": tournament["variant"],
-        "rated": "false",
-        "berserkable": "true",
-        "description": DESCRIPTION,
-        "conditions.teamMember.teamId": TEAM_ID,
-    }
-
-    response = post_with_rate_limit(f"{LICHESS_API}/tournament", payload)
-    if not response.ok:
-        raise RuntimeError(
-            f"Failed to create Arena {tournament['name']}: "
-            f"HTTP {response.status_code}: {response.text[:1000]}"
-        )
-
-    tournament_id = response.json().get("id")
-    if not tournament_id:
-        raise RuntimeError(f"No Arena ID returned for {tournament['name']}.")
-    return f"https://lichess.org/tournament/{tournament_id}"
-
-
 def main() -> None:
     created: list[str] = []
 
-    print("Creating 5 staggered Arenas...", flush=True)
+    print("Creating the 2 remaining Arenas with valid waitMinutes values...", flush=True)
     for arena in ARENAS:
         url = create_arena(arena)
         created.append(url)
@@ -134,7 +133,7 @@ def main() -> None:
         )
         time.sleep(3)
 
-    first_swiss_start = rounded_utc_start(75)
+    first_swiss_start = rounded_utc_start(90)
     print("Creating 5 staggered Swiss tournaments...", flush=True)
     for index, swiss in enumerate(SWISSES):
         start_time = first_swiss_start + timedelta(minutes=index * 45)
