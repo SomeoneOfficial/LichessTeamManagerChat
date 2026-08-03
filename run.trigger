@@ -1,1 +1,1 @@
-create-10-swiss-tournaments-2026-07-31-v1
+create-5-swiss-and-5-arenas-2026-08-03-v1
