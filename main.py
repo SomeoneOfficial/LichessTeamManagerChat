@@ -8,8 +8,6 @@ import requests
 
 LICHESS_API = "https://lichess.org/api"
 TEAM_ID = "the-chess-fan-club"
-START_DELAY_MINUTES = 30
-SPACING_MINUTES = 45
 
 DESCRIPTION = (
     "Next Prize Tournament: https://lichess.org/tournament/jGlGk30d\n\n"
@@ -18,97 +16,49 @@ DESCRIPTION = (
     "Want to organize or add your team to future battles? DM @Ajisland."
 )
 
-TOURNAMENTS = [
-    {
-        "name": "Swiss Cheesse UltraBullet",
-        "clock_limit": 15,
-        "clock_increment": 0,
-        "rounds": 12,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse HyperBullet",
-        "clock_limit": 30,
-        "clock_increment": 0,
-        "rounds": 11,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse Bullet",
-        "clock_limit": 60,
-        "clock_increment": 0,
-        "rounds": 10,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse Bullet Plus",
-        "clock_limit": 60,
-        "clock_increment": 1,
-        "rounds": 9,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse Blitz",
-        "clock_limit": 180,
-        "clock_increment": 0,
-        "rounds": 8,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse Blitz Increment",
-        "clock_limit": 180,
-        "clock_increment": 2,
-        "rounds": 8,
-        "variant": "standard",
-    },
-    {
-        "name": "Swiss Cheesse Crazyhouse",
-        "clock_limit": 180,
-        "clock_increment": 0,
-        "rounds": 7,
-        "variant": "crazyhouse",
-    },
-    {
-        "name": "Swiss Cheesse Atomic",
-        "clock_limit": 180,
-        "clock_increment": 2,
-        "rounds": 7,
-        "variant": "atomic",
-    },
-    {
-        "name": "Swiss Cheesse Chess960",
-        "clock_limit": 300,
-        "clock_increment": 3,
-        "rounds": 6,
-        "variant": "chess960",
-    },
-    {
-        "name": "Swiss Cheesse Rapid",
-        "clock_limit": 600,
-        "clock_increment": 0,
-        "rounds": 5,
-        "variant": "standard",
-    },
+SWISSES = [
+    {"name": "Swiss Cheesse Bullet Reloaded", "clock_limit": 60, "clock_increment": 0, "rounds": 10, "variant": "standard"},
+    {"name": "Swiss Cheesse Blitz Reloaded", "clock_limit": 180, "clock_increment": 2, "rounds": 8, "variant": "standard"},
+    {"name": "Swiss Cheesse Crazyhouse Reloaded", "clock_limit": 180, "clock_increment": 0, "rounds": 7, "variant": "crazyhouse"},
+    {"name": "Swiss Cheesse Atomic Reloaded", "clock_limit": 180, "clock_increment": 2, "rounds": 7, "variant": "atomic"},
+    {"name": "Swiss Cheesse Rapid Reloaded", "clock_limit": 600, "clock_increment": 0, "rounds": 5, "variant": "standard"},
+]
+
+ARENAS = [
+    {"name": "Cheesse Arena UltraBullet", "clock_time": 0.25, "clock_increment": 0, "minutes": 30, "wait_minutes": 10, "variant": "standard"},
+    {"name": "Cheesse Arena Bullet", "clock_time": 1, "clock_increment": 0, "minutes": 40, "wait_minutes": 20, "variant": "standard"},
+    {"name": "Cheesse Arena Blitz", "clock_time": 3, "clock_increment": 2, "minutes": 50, "wait_minutes": 30, "variant": "standard"},
+    {"name": "Cheesse Arena Crazyhouse", "clock_time": 3, "clock_increment": 0, "minutes": 45, "wait_minutes": 40, "variant": "crazyhouse"},
+    {"name": "Cheesse Arena Chess960", "clock_time": 5, "clock_increment": 3, "minutes": 60, "wait_minutes": 50, "variant": "chess960"},
 ]
 
 
-def get_token() -> str:
-    token = os.getenv("LICHESS_TOKEN", "").strip()
-    if not token:
+def token() -> str:
+    value = os.getenv("LICHESS_TOKEN", "").strip()
+    if not value:
         raise RuntimeError("LICHESS_TOKEN is missing from GitHub Actions secrets.")
-    return token
+    return value
 
 
-def get_headers() -> dict[str, str]:
+def headers() -> dict[str, str]:
     return {
-        "Authorization": f"Bearer {get_token()}",
+        "Authorization": f"Bearer {token()}",
         "Accept": "application/json",
-        "User-Agent": "LichessTeamManagerChat/3.0",
+        "User-Agent": "LichessTeamManagerChat/4.0",
     }
 
 
-def rounded_start() -> datetime:
-    start = datetime.now(timezone.utc) + timedelta(minutes=START_DELAY_MINUTES)
+def post_with_rate_limit(url: str, payload: dict) -> requests.Response:
+    response = requests.post(url, headers=headers(), data=payload, timeout=30)
+    if response.status_code == 429:
+        print("Lichess rate limit reached; waiting 60 seconds before one retry.", flush=True)
+        time.sleep(60)
+        response = requests.post(url, headers=headers(), data=payload, timeout=30)
+    return response
+
+
+def rounded_utc_start(delay_minutes: int) -> datetime:
+    start = datetime.now(timezone.utc) + timedelta(minutes=delay_minutes)
     start = start.replace(second=0, microsecond=0)
     remainder = start.minute % 5
     if remainder:
@@ -116,7 +66,7 @@ def rounded_start() -> datetime:
     return start
 
 
-def create_tournament(tournament: dict, start_time: datetime) -> str:
+def create_swiss(tournament: dict, start_time: datetime) -> str:
     payload = {
         "name": tournament["name"],
         "clock.limit": tournament["clock_limit"],
@@ -128,52 +78,73 @@ def create_tournament(tournament: dict, start_time: datetime) -> str:
         "startsAt": start_time.isoformat().replace("+00:00", "Z"),
     }
 
-    response = requests.post(
+    response = post_with_rate_limit(
         f"{LICHESS_API}/swiss/new/{TEAM_ID}",
-        headers=get_headers(),
-        data=payload,
-        timeout=30,
+        payload,
     )
-
-    if response.status_code == 429:
-        raise RuntimeError("Lichess rate limit reached. Wait one minute before retrying.")
-
     if not response.ok:
         raise RuntimeError(
-            f"Failed to create {tournament['name']}: "
+            f"Failed to create Swiss {tournament['name']}: "
             f"HTTP {response.status_code}: {response.text[:1000]}"
         )
 
-    result = response.json()
-    tournament_id = result.get("id")
+    tournament_id = response.json().get("id")
     if not tournament_id:
-        raise RuntimeError(
-            f"Lichess returned no tournament ID for {tournament['name']}: {result}"
-        )
-
+        raise RuntimeError(f"No Swiss ID returned for {tournament['name']}.")
     return f"https://lichess.org/swiss/{tournament_id}"
 
 
-def main() -> None:
-    if len(TOURNAMENTS) != 10:
-        raise RuntimeError("The script must contain exactly 10 tournaments.")
+def create_arena(tournament: dict) -> str:
+    payload = {
+        "name": tournament["name"],
+        "clockTime": tournament["clock_time"],
+        "clockIncrement": tournament["clock_increment"],
+        "minutes": tournament["minutes"],
+        "waitMinutes": tournament["wait_minutes"],
+        "variant": tournament["variant"],
+        "rated": "false",
+        "berserkable": "true",
+        "description": DESCRIPTION,
+        "conditions.teamMember.teamId": TEAM_ID,
+    }
 
-    first_start = rounded_start()
-    created: list[str] = []
-
-    for index, tournament in enumerate(TOURNAMENTS):
-        start_time = first_start + timedelta(minutes=index * SPACING_MINUTES)
-        url = create_tournament(tournament, start_time)
-        created.append(url)
-        print(
-            f"Created {tournament['name']} for {start_time.isoformat()}: {url}",
-            flush=True,
+    response = post_with_rate_limit(f"{LICHESS_API}/tournament", payload)
+    if not response.ok:
+        raise RuntimeError(
+            f"Failed to create Arena {tournament['name']}: "
+            f"HTTP {response.status_code}: {response.text[:1000]}"
         )
 
-        if index < len(TOURNAMENTS) - 1:
+    tournament_id = response.json().get("id")
+    if not tournament_id:
+        raise RuntimeError(f"No Arena ID returned for {tournament['name']}.")
+    return f"https://lichess.org/tournament/{tournament_id}"
+
+
+def main() -> None:
+    created: list[str] = []
+
+    print("Creating 5 staggered Arenas...", flush=True)
+    for arena in ARENAS:
+        url = create_arena(arena)
+        created.append(url)
+        print(
+            f"Created {arena['name']} (starts in {arena['wait_minutes']} minutes): {url}",
+            flush=True,
+        )
+        time.sleep(3)
+
+    first_swiss_start = rounded_utc_start(75)
+    print("Creating 5 staggered Swiss tournaments...", flush=True)
+    for index, swiss in enumerate(SWISSES):
+        start_time = first_swiss_start + timedelta(minutes=index * 45)
+        url = create_swiss(swiss, start_time)
+        created.append(url)
+        print(f"Created {swiss['name']} for {start_time.isoformat()}: {url}", flush=True)
+        if index < len(SWISSES) - 1:
             time.sleep(3)
 
-    print("\nCreated all 10 Swiss tournaments:")
+    print("\nCreated tournament links:")
     for url in created:
         print(url)
 
